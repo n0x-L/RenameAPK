@@ -1,5 +1,8 @@
 import os, subprocess, sys, argparse, re, collections, pprint
 
+
+# Methods 
+
 # Get a list of file names
 def get_fileNames(aDirectory):
 	a = subprocess.Popen('ls %s' % aDirectory, stdout=subprocess.PIPE, shell=True)
@@ -151,11 +154,11 @@ def main():
 	#aDirectory = ""
 	#parser = argparse.ArgumentParser(description='A program for renaming similar APKs')
 	
-	namedFileList = get_fileNames('instantcoffee_named')
-	unnamedFileList = get_fileNames('instantcoffee_unnamed')
+	namedFileList = get_fileNames('library_named')
+	unnamedFileList = get_fileNames('library_unnamed')
 	
-	namedHasStrings, namedNoStrings, named_strings_chain = get_StringLists(namedFileList, 'instantcoffee_named')
-	unnamedHasStrings, unnamedNoStrings, unnamed_strings_chain = get_StringLists(unnamedFileList, 'instantcoffee_unnamed')
+	namedHasStrings, namedNoStrings, named_strings_chain = get_StringLists(namedFileList, 'library_named')
+	unnamedHasStrings, unnamedNoStrings, unnamed_strings_chain = get_StringLists(unnamedFileList, 'library_unnamed')
 	
 	unnamed_stringUnique_chain = unique_StringFinder(unnamed_strings_chain, named_strings_chain)
 
