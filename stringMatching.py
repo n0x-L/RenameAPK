@@ -1,7 +1,7 @@
 import os, subprocess, sys, argparse
 
 userid = "ck"
-p = subprocess.Popen('grep -a "const-string" instantcoffee_named/%s.smali' % userid, stdout=subprocess.PIPE, shell=True)
+p = subprocess.Popen('grep -a "const-string" library_named/%s.smali' % userid, stdout=subprocess.PIPE, shell=True)
 output,error = p.communicate()
 #print(output)
 
@@ -15,7 +15,7 @@ stringList = output.splitlines()
 thing1 = stringList[0]
 
 # Get other matching file
-b = subprocess.Popen('grep -a "const-string" instantcoffee_unnamed/cm.smali', stdout=subprocess.PIPE, shell=True)
+b = subprocess.Popen('grep -a "const-string" library_unnamed/cm.smali', stdout=subprocess.PIPE, shell=True)
 output2,error2 = b.communicate()
 output2 = output2.decode('utf-8')
 stringList2 = output.splitlines()
