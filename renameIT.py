@@ -193,9 +193,71 @@ def unique_StringMatching(still_unknown, named_strings_chain, unnamed_strings_ch
 								continue
 						
 	return unnamed_strings_chain
-								
+
+# Get fields and methods attributes for files which do not contain strings						
+def get_Fields(aFileList, aDirectory, packageName):
+	fields_chainMap = collections.ChainMap()
+	noFields = []
+	hasFields = []
+	noFieldsCount = 0
+	hasFieldsCount = 0
+	fieldsList = []
+	for x in aFileList:
+		tmpDirectory = aDirectory + "/" + x
+
+		# Get fields
+		b = subprocess.Popen('grep -a ".field " %s' % tmpDirectory, stdout=subprocess.PIPE, shell=True)
+		fields, errorTemp = b.communicate()
+		fields = fields.decode('utf-8')
+	
+		# If no fields in file
+		if not fields:
+			#print("No fields in file: ", x)
+			noFields.append(x)
+			noFieldsCount+=1
+		else:
+			#print("Fields in file:  ", x)
+			hasFields.append(x)
+			hasFieldsCount+=1
+
+			# Filter out field names
+			# !! MAY need to change this, might not work if we are taking the name of the field, may have
+			# to start searching just from the colon, and also for any fields that contain the package name, exlclude anything after the last 
+			# slash
+			#
+			tmpFieldsList = re.findall('((\\b)([a-zA-Z0-9_]+):(.)*$)', fields, flags=re.M)
+
+			for y in tmpFieldsList:
+				# There's no sense comparing objects in the package 
+				# because the names will be different
+				if packageName in y[0]:
+					fieldsList.append(packageName)
+				else:
+					fieldsList.append(y[0])
+
+					
+
+			tmpDict = {
+			"Filename": x,
+			"no_of_fields": len(fieldsList),
+			"fields" : fieldsList,
+			"new_name" : "unknown",
+			"guessed_name" : "unknown"
+			}
+
+			fields_chainMap = fields_chainMap.new_child(tmpDict)
+
+			# Reset list
+			fieldsList = []
 
 
+		# Reset values
+		tmpDirectory = ""
+	
+	print(str(len(noFields)) + ' files have no fields')
+	print(str(len(hasFields)) + ' files have fields')
+	
+	return hasFields, noFields, fields_chainMap
 
 #def confirm_Matches(guesses):
 	# TO-DO
@@ -211,61 +273,25 @@ def main():
 	unnamedHasStrings, unnamedNoStrings, unnamed_strings_chain = get_StringLists(unnamedFileList, 'library_unnamed')
 	
 	# Fill out the 'unique_file_strings' and 'unique_lib_strings' portion of the data structure
-	unnamed_uniqueStringsChain = unique_StringFinder(unnamed_strings_chain)
-	named_uniqueStringsChain = unique_StringFinder(named_strings_chain)
+	#unnamed_uniqueStringsChain = unique_StringFinder(unnamed_strings_chain)
+	#named_uniqueStringsChain = unique_StringFinder(named_strings_chain)
 
 	# Make some matches and get back any that couldn't be matched yet
-	unnamed_stringMatchesChain, still_unknown = string_Matching(unnamed_uniqueStringsChain, named_uniqueStringsChain)
+	#unnamed_stringMatchesChain, still_unknown = string_Matching(unnamed_uniqueStringsChain, named_uniqueStringsChain)
 
-	print('\n---- Progress Update ---')
-	all_unnamed_stringfilesCount = len(unnamedHasStrings)
-	unknownCount = len(still_unknown.maps)
-	knownCount = all_unnamed_stringfilesCount - unknownCount
-	print('Total number of unnamed files: ' + str(all_unnamed_stringfilesCount))
-	print('Number of (unconfirmed) guesses for files containing strings: ' + str(knownCount))
-	print('Number of unknowns for files containing unique library strings: ' + str(unknownCount))
-	print('\n continuing...')
+	# Make final guesses for files with strings based on unique library strings
+	#finalStringGuesses = unique_StringMatching(still_unknown, named_uniqueStringsChain, unnamed_stringMatchesChain)
 
-	finalStringGuesses = unique_StringMatching(still_unknown, named_uniqueStringsChain, unnamed_stringMatchesChain)
+	# Get field information for unnamed files which did NOT contain strings in them
+	unnamedHasFields, unnamedNoFields, unnamed_fields_chainMap = get_Fields(unnamedNoStrings, 'library_unnamed', 'instantcoffee')
 
-	unknownCount = 0
-	knownCount = 0
-	print('\n--GUESSES--')
-	for x in finalStringGuesses.maps:
-		if x.get('Filename') != None:
-			if x.get('guessed_name') != 'unknown':
-				print(x.get('Filename') + ' is ' + x.get('guessed_name'))
-				knownCount+=1
-			else:
-				print('Still not sure who "' + x.get('Filename') + '" is.')
-				unknownCount+=1
+	# Get field information for named files which did NOT contain strings
+	namedHasFields, namedNoFields, named_fields_chainMap = get_Fields(namedNoStrings, 'library_named', 'instantcoffee')
 
-	print('\n---- Progress Update ---')
-	totalCount_unnamed = len(unnamedHasStrings) + len(unnamedNoStrings)
-	print('Total number of unnamed files: ' + str(totalCount_unnamed))
-	print('Total number of unnamed files containing strings: ' + str(len(unnamedHasStrings)))
-	print('Number of (unconfirmed) guesses for files containing strings: ' + str(knownCount))
-	print('Number of still unknowns for files containing unique library strings: ' + str(unknownCount))
-	print('\n continuing...')
+	pprint.pprint(named_fields_chainMap)
+	#for x in unnamed_fields_chainMap:
+	#	pprint.pprint(x)
 
-	#uCount = 0
-	#uuCount = 0
-	#for x in unnamed_uniqueStringsChain.maps:
-	#	if x.get('Filename') != None:
-	#		if x.get('guessed_name') == 'unknown':
-	#			if x.get('unique_lib_strings'):
-	#				uuCount+=1
-	#			print('Not sure who ' + x.get('Filename') + ' is.')
-	#			uCount+=1
-	#print('Number of unknowns counted: ' + str(uCount))
-	#print('Number of unknowns with unique lib strings counted: ' + str(uuCount))
-		#pprint.pprint(x)
-
-	#for x in still_unknown.maps:
-	#	if x.get('guessed_name') == 'unknown':
-	#		print('Not sure who ' + x.get('Filename') + ' is.')
-	#		uCount+=1
-	#print('Number of unknowns with unique lib strings counted: ' + str(uCount))
 
 
 if __name__ == "__main__":
