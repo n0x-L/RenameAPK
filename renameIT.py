@@ -235,7 +235,25 @@ def get_Fields(aFileList, aDirectory, packageName):
 				else:
 					fieldsList.append(y[0])
 
-					
+		# Get methods
+		c = subprocess.Popen('grep -a ".method " %s' % tmpDirectory, stdout=subprocess.PIPE, shell=True)
+		methods, errorMTemp = c.communicate()
+		methods = methods.decode('utf-8')
+	
+		# If no methods in file
+		if not methods:
+			print("No methods in file: ", x)
+			
+		else:
+			print(methods)
+			tmpMethodsList = re.findall('((\\b)([a-zA-Z0-9_]+)\((.)*$|constructor.*$)', methods, flags=re.M)
+			print(tmpMethodsList)
+			exit()
+			#print(x + ' methods:')
+			#for y in tmpMethodsList:
+			#	y[0]
+
+		
 
 			tmpDict = {
 			"Filename": x,
@@ -245,7 +263,7 @@ def get_Fields(aFileList, aDirectory, packageName):
 			"guessed_name" : "unknown"
 			}
 
-			fields_chainMap = fields_chainMap.new_child(tmpDict)
+			#fields_chainMap = fields_chainMap.new_child(tmpDict)
 
 			# Reset list
 			fieldsList = []
@@ -254,10 +272,10 @@ def get_Fields(aFileList, aDirectory, packageName):
 		# Reset values
 		tmpDirectory = ""
 	
-	print(str(len(noFields)) + ' files have no fields')
-	print(str(len(hasFields)) + ' files have fields')
+	#print(str(len(noFields)) + ' files have no fields')
+	#print(str(len(hasFields)) + ' files have fields')
 	
-	return hasFields, noFields, fields_chainMap
+	#return hasFields, noFields, fields_chainMap
 
 #def confirm_Matches(guesses):
 	# TO-DO
@@ -283,12 +301,13 @@ def main():
 	#finalStringGuesses = unique_StringMatching(still_unknown, named_uniqueStringsChain, unnamed_stringMatchesChain)
 
 	# Get field information for unnamed files which did NOT contain strings in them
-	unnamedHasFields, unnamedNoFields, unnamed_fields_chainMap = get_Fields(unnamedNoStrings, 'library_unnamed', 'instantcoffee')
+	#unnamedHasFields, unnamedNoFields, unnamed_fields_chainMap = get_Fields(unnamedNoStrings, 'library_unnamed', 'instantcoffee')
+	get_Fields(unnamedNoStrings, 'library_unnamed', 'instantcoffee')
 
 	# Get field information for named files which did NOT contain strings
-	namedHasFields, namedNoFields, named_fields_chainMap = get_Fields(namedNoStrings, 'library_named', 'instantcoffee')
+	#namedHasFields, namedNoFields, named_fields_chainMap = get_Fields(namedNoStrings, 'library_named', 'instantcoffee')
 
-	pprint.pprint(named_fields_chainMap)
+	#pprint.pprint(named_fields_chainMap)
 	#for x in unnamed_fields_chainMap:
 	#	pprint.pprint(x)
 
