@@ -305,6 +305,10 @@ def get_FieldsAndMethods(aFileList, aDirectory, packageName):
 	
 	return fields_methods_chainMap
 
+#################################
+# THIS METHOD NEEDS TO BE FIXED #
+# see git log for details       #
+################################
 # Take in dicts of information on fields and methods and do comparisons to try and make matches
 # (similar method to the string matching method)
 def fieldsAndMethods_Matching(named_fieldsAndMethods_chainMap, unnamed_fieldsAndMethods_chainMap):
@@ -329,7 +333,11 @@ def fieldsAndMethods_Matching(named_fieldsAndMethods_chainMap, unnamed_fieldsAnd
 				# If fields array and methods array of x is the same as fields and methods array of guess z
 				# then record it as the guess
 				if set(tmpFieldsX) == set(tmpFieldsZ) or set(tmpMethodsX) == set(tmpMethodsZ):
-					#print('Guess is that ' + x.get('Filename') + " is " + z.get('Filename'))
+					print('Guess is that ' + x.get('Filename') + " is " + z.get('Filename'))
+					print(x.get('Filename') + ' has fields:')
+					print(tmpFieldsX)
+					print('and ' + x.get('Filename') + ' has fields:')
+					print(tmpFieldsZ)
 					x.update(guessed_name = z.get('Filename'))
 					break # stop searching if match is found
 
@@ -421,46 +429,27 @@ def main():
 	# TO-DO method
 
 	# Get field information for NAMED files which do not contain strings
-	#named_fieldsAndMethods_chainMap = get_FieldsAndMethods(namedNoStrings, 'library_named', 'instantcoffee') # fileList, Directory, packageName
-	named_fieldsAndMethods_chainMap = get_FieldsAndMethods(namedFileList, 'library_named', 'instantcoffee') # fileList, Directory, packageName
+	named_fieldsAndMethods_chainMap = get_FieldsAndMethods(namedNoStrings, 'library_named', 'instantcoffee') # fileList, Directory, packageName
+	#named_fieldsAndMethods_chainMap = get_FieldsAndMethods(namedFileList, 'library_named', 'instantcoffee') # fileList, Directory, packageName
 
 	# Get field information for UNNAMED files which do not contain strings in them
-	#unnamed_fieldsAndMethods_chainMap = get_FieldsAndMethods(unnamedNoStrings, 'library_unnamed', 'instantcoffee') # fileList, Directory, packageName
-	unnamed_fieldsAndMethods_chainMap = get_FieldsAndMethods(unnamedFileList, 'library_unnamed', 'instantcoffee') # fileList, Directory, packageName
+	unnamed_fieldsAndMethods_chainMap = get_FieldsAndMethods(unnamedNoStrings, 'library_unnamed', 'instantcoffee') # fileList, Directory, packageName
+	#unnamed_fieldsAndMethods_chainMap = get_FieldsAndMethods(unnamedFileList, 'library_unnamed', 'instantcoffee') # fileList, Directory, packageName
 
-	pprint.pprint(unnamed_fieldsAndMethods_chainMap)
-	#for x in unnamed_fieldsAndMethods_chainMap.maps:
-	#	if x.get('Filename') != None:
-	#		if x.get('Filename') == 'cnb.smali':
-	#			print('cnb.smali:')
-	#			pprint.pprint(x.get('fields'))
-	#			pprint.pprint(x.get('no_of_fields'))
-	#			break
-
-	#for x in named_fieldsAndMethods_chainMap.maps:
-	#	if x.get('Filename') != None:
-	#		if x.get('Filename') == 'cl_b.smali':
-	#			print('cl_b.smali:')
-	#			pprint.pprint(x.get('fields'))
-	#			pprint.pprint(x.get('no_of_fields'))
-	#			pprint.pprint(x.get('methods'))
-	#			pprint.pprint(x.get('no_of_methods'))
-	#			break
-
-	#print('Make guess for matches based on fields and methods..')
+	print('Make guess for matches based on fields and methods..')
 
 	# Make some exact matches with fields and methods and get back any that couldn't be matched
-	#unnamed_fieldsAndMethods_chain, still_unknown2 = fieldsAndMethods_Matching(named_fieldsAndMethods_chainMap, unnamed_fieldsAndMethods_chainMap)
+	unnamed_fieldsAndMethods_chain, still_unknown2 = fieldsAndMethods_Matching(named_fieldsAndMethods_chainMap, unnamed_fieldsAndMethods_chainMap)
 
-	#get_Update(unnamedFileList, unnamed_fieldsAndMethods_chain)
+	get_Update(unnamedFileList, unnamed_fieldsAndMethods_chain)
 
 	# Try to make reasonable guesses from those that still couldn't be matched
-	#final_fieldsAndMethods_Guesses, left_unknown = fieldsAndMethods_Guessing(still_unknown2, named_fieldsAndMethods_chainMap, unnamed_fieldsAndMethods_chain)
+	final_fieldsAndMethods_Guesses, left_unknown = fieldsAndMethods_Guessing(still_unknown2, named_fieldsAndMethods_chainMap, unnamed_fieldsAndMethods_chain)
 
-	#print('Try to make some more...')
-	#get_Update(unnamedFileList, final_fieldsAndMethods_Guesses)
+	print('Try to make some more...')
+	get_Update(unnamedFileList, final_fieldsAndMethods_Guesses)
 
-	#print('Done')
+	print('Done')
 
 	#pprint.pprint(final_fieldsAndMethods_Guesses)
 
