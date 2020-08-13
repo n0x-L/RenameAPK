@@ -18,6 +18,8 @@ def get_fileNames(aDirectory):
 	else:
 		print("ERROR: File names cannot contain special characters:")
 		fileList = outputA.splitlines()
+
+		# Print out what the offending files are
 		for x in fileList:
 			if(check.search(x) != None):
 				print(x)
@@ -26,6 +28,27 @@ def get_fileNames(aDirectory):
 
 	# TO-DO
 	# Check that all given filenames are unique!
+
+	# TO-DO
+	# Method for renaming files with special characters since the dollar sign is such a common occurence with pro-guard
+	# linux command: mv oldfile.txt newfile.txt
+
+# For getting an update on how many files have had guesses applied to them
+def get_Update(unnamedFileList, aChainMap):
+	total_files = len(unnamedFileList)
+	guesses_count = 0
+
+	for x in aChainMap.maps:
+		if x.get('Filename') != None:
+			if x.get('guessed_name') != 'unknown':
+				guesses_count += 1
+
+	print(str(guesses_count) + ' / ' + str(total_files) + ' files guessed')
+
+
+
+
+
 
 
 # Find which files contain strings in named directory and return appropriate values
@@ -194,14 +217,23 @@ def unique_StringMatching(still_unknown, named_strings_chain, unnamed_strings_ch
 						
 	return unnamed_strings_chain
 
-# Get fields and methods attributes for files which do not contain strings						
-def get_Fields(aFileList, aDirectory, packageName):
-	fields_chainMap = collections.ChainMap()
+# Get fields and methods attributes for files which do not contain strings
+# !! Currently doesn't do anything with the noMethods and hasMethods lists			
+def get_FieldsAndMethods(aFileList, aDirectory, packageName):
+	fields_methods_chainMap = collections.ChainMap()
 	noFields = []
 	hasFields = []
 	noFieldsCount = 0
 	hasFieldsCount = 0
 	fieldsList = []
+
+	noMethods = []
+	hasMethods = []
+	methodsList = []
+
+	# TO-DO insert packageName
+	methods_re = re.compile('L' + packageName + '/[a-z]*')
+
 	for x in aFileList:
 		tmpDirectory = aDirectory + "/" + x
 
@@ -209,22 +241,17 @@ def get_Fields(aFileList, aDirectory, packageName):
 		b = subprocess.Popen('grep -a ".field " %s' % tmpDirectory, stdout=subprocess.PIPE, shell=True)
 		fields, errorTemp = b.communicate()
 		fields = fields.decode('utf-8')
-	
-		# If no fields in file
+
 		if not fields:
 			#print("No fields in file: ", x)
 			noFields.append(x)
 			noFieldsCount+=1
 		else:
-			#print("Fields in file:  ", x)
+			fieldsList = []
 			hasFields.append(x)
 			hasFieldsCount+=1
 
-			# Filter out field names
-			# !! MAY need to change this, might not work if we are taking the name of the field, may have
-			# to start searching just from the colon, and also for any fields that contain the package name, exlclude anything after the last 
-			# slash
-			#
+			# Filter out field names (for package fields they will be differently named)
 			tmpFieldsList = re.findall('((\\b)([a-zA-Z0-9_]+):(.)*$)', fields, flags=re.M)
 
 			for y in tmpFieldsList:
@@ -235,47 +262,81 @@ def get_Fields(aFileList, aDirectory, packageName):
 				else:
 					fieldsList.append(y[0])
 
-		# Get methods
+		# Do a grep of the methods in the file
 		c = subprocess.Popen('grep -a ".method " %s' % tmpDirectory, stdout=subprocess.PIPE, shell=True)
 		methods, errorMTemp = c.communicate()
 		methods = methods.decode('utf-8')
 	
-		# If no methods in file
+		# If no methods in file just add the filename to the noMethods list
 		if not methods:
-			print("No methods in file: ", x)
-			
-		else:
-			print(methods)
-			tmpMethodsList = re.findall('((\\b)([a-zA-Z0-9_]+)\((.)*$|constructor.*$)', methods, flags=re.M)
-			print(tmpMethodsList)
-			exit()
-			#print(x + ' methods:')
-			#for y in tmpMethodsList:
-			#	y[0]
+			#print("No methods in file: ", x)
+			noMethods.append(x)
 
-		
+		# Otherwise build a list of methods using a regex to extract them out of the grep we did	
+		else:
+			methodsList = []
+			tmpMethodsList = re.findall('((\\b)([a-zA-Z0-9_]+)\((.)*$|constructor.*$)', methods, flags=re.M)
+			
+			# A bit trickier, use regex to replace "Linstantcoffee/x" occurences with just "instantcoffee"
+			# while maintaining everything else so that we don't lose the general signature
+			for y in tmpMethodsList:
+				if packageName in y[0]:
+					methodsList.append(methods_re.sub(packageName, y[0]))
+				else:
+					methodsList.append(y[0])
 
 			tmpDict = {
 			"Filename": x,
 			"no_of_fields": len(fieldsList),
 			"fields" : fieldsList,
+			"no_of_methods": len(methodsList),
+			"methods" : methodsList,
 			"new_name" : "unknown",
 			"guessed_name" : "unknown"
 			}
 
-			#fields_chainMap = fields_chainMap.new_child(tmpDict)
+			fields_methods_chainMap = fields_methods_chainMap.new_child(tmpDict)
 
-			# Reset list
-			fieldsList = []
-
-
-		# Reset values
+		# Reset
 		tmpDirectory = ""
 	
-	#print(str(len(noFields)) + ' files have no fields')
-	#print(str(len(hasFields)) + ' files have fields')
-	
-	#return hasFields, noFields, fields_chainMap
+	return hasFields, noFields, fields_methods_chainMap
+
+# Take in dicts of information on fields and methods and do comparisons to try and make matches
+# (similar method to the string matching method)
+def fieldsAndMethods_Matching(unnamed_fieldsAndMethods_chainMap, named_fieldsAndMethods_chainMap):
+	i = 0
+	guesses = []
+	still_unknown2 = collections.ChainMap()
+
+	for x in unnamed_fieldsAndMethods_chainMap.maps:
+		if x.get('Filename') != None:
+			# If they have the same number of fields AND methods then store it in the 'guesses' list
+			for y in named_fieldsAndMethods_chainMap.maps:
+				if x.get('no_of_fields') == y.get('no_of_fields'):
+					if x.get('no_of_methods') == y.get('no_of_methods'):
+						guesses.append(y)
+
+			# Loop through our list of guesses and try to 
+			# match up the fields and methods
+			for z in guesses:
+				tmpFieldsX = x.get('fields')
+				tmpFieldsZ = z.get('fields')
+				tmpMethodsX = x.get('methods')
+				tmpMethodsZ = z.get('methods')
+
+				# if fields array and methods array of x is the same as fields and methods array of guess z
+				# then record it as the guess
+				if tmpFieldsX == tmpFieldsZ:
+					if tmpMethodsX == tmpMethodsZ:
+						print('Guess is that ' + x.get('Filename') + " is " + z.get('Filename'))
+						x.update(guessed_name = z.get('Filename'))
+						break # stop searching if match is found
+
+			# Reset list
+			guesses = []
+
+	return unnamed_fieldsAndMethods_chainMap, still_unknown2
 
 #def confirm_Matches(guesses):
 	# TO-DO
@@ -291,27 +352,39 @@ def main():
 	unnamedHasStrings, unnamedNoStrings, unnamed_strings_chain = get_StringLists(unnamedFileList, 'library_unnamed')
 	
 	# Fill out the 'unique_file_strings' and 'unique_lib_strings' portion of the data structure
-	#unnamed_uniqueStringsChain = unique_StringFinder(unnamed_strings_chain)
-	#named_uniqueStringsChain = unique_StringFinder(named_strings_chain)
+	unnamed_uniqueStringsChain = unique_StringFinder(unnamed_strings_chain)
+	named_uniqueStringsChain = unique_StringFinder(named_strings_chain)
 
 	# Make some matches and get back any that couldn't be matched yet
-	#unnamed_stringMatchesChain, still_unknown = string_Matching(unnamed_uniqueStringsChain, named_uniqueStringsChain)
+	unnamed_stringMatchesChain, still_unknown = string_Matching(unnamed_uniqueStringsChain, named_uniqueStringsChain)
+
+	get_Update(unnamedFileList, unnamed_stringMatchesChain)
 
 	# Make final guesses for files with strings based on unique library strings
-	#finalStringGuesses = unique_StringMatching(still_unknown, named_uniqueStringsChain, unnamed_stringMatchesChain)
+	finalStringGuesses = unique_StringMatching(still_unknown, named_uniqueStringsChain, unnamed_stringMatchesChain)
 
-	# Get field information for unnamed files which did NOT contain strings in them
-	#unnamedHasFields, unnamedNoFields, unnamed_fields_chainMap = get_Fields(unnamedNoStrings, 'library_unnamed', 'instantcoffee')
-	get_Fields(unnamedNoStrings, 'library_unnamed', 'instantcoffee')
+	get_Update(unnamedFileList, finalStringGuesses)
 
-	# Get field information for named files which did NOT contain strings
-	#namedHasFields, namedNoFields, named_fields_chainMap = get_Fields(namedNoStrings, 'library_named', 'instantcoffee')
+	# Get Package name for filtering properly with methods and fields
+	# TO-DO method
 
-	#pprint.pprint(named_fields_chainMap)
+	# Get field information for unnamed files which do NOT contain strings in them
+	unnamedHasFields, unnamedNoFields, unnamed_fieldsAndMethods_chainMap = get_FieldsAndMethods(unnamedNoStrings, 'library_unnamed', 'instantcoffee') # fileList, Directory, packageName
+
+	# Get field information for named files which do NOT contain strings
+	namedHasFields, namedNoFields, named_fieldsAndMethods_chainMap = get_FieldsAndMethods(namedNoStrings, 'library_named', 'instantcoffee') # fileList, Directory, packageName
+
+	# Make some matches and get back any that couldn't be matched yet
+	unnamed_fieldsAndMethods_chain, still_unknown2 = fieldsAndMethods_Matching(unnamed_fieldsAndMethods_chainMap, named_fieldsAndMethods_chainMap)
+
+	get_Update(unnamedFileList, unnamed_fieldsAndMethods_chain)
+	#pprint.pprint(unnamed_fieldsAndMethods_chain)
+
+
 	#for x in unnamed_fields_chainMap:
 	#	pprint.pprint(x)
 
-
+	#get_Update(unnamedFileList, finalStringGuesses)
 
 if __name__ == "__main__":
 	main()
