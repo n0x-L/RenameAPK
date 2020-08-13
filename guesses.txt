@@ -1,0 +1,10 @@
+Creating file name list..
+Creating file name list..
+Make guess for matches based on strings...
+37 / 147 files guessed
+40 / 147 files guessed
+Make guess for matches based on fields and methods..
+100 / 147 files guessed
+Try to make some more...
+103 / 147 files guessed
+Done
