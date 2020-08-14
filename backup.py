@@ -4,7 +4,7 @@ import os, subprocess, sys, argparse, re, collections, pprint
 # Methods 
 
 # Get a list of file names
-def getFileNames(aDirectory):
+def get_fileNames(aDirectory):
 	a = subprocess.Popen('ls %s' % aDirectory, stdout=subprocess.PIPE, shell=True)
 	outputA,errorA = a.communicate()
 	outputA = outputA.decode('utf-8')
@@ -34,7 +34,7 @@ def getFileNames(aDirectory):
 	# linux command: mv oldfile.txt newfile.txt
 
 # For getting an update on how many files have had guesses applied to them
-def getUpdate(unnamedFileList, aChainMap):
+def get_Update(unnamedFileList, aChainMap):
 	total_files = len(unnamedFileList)
 	guesses_count = 0
 
@@ -46,11 +46,11 @@ def getUpdate(unnamedFileList, aChainMap):
 	print(str(guesses_count) + ' / ' + str(total_files) + ' files guessed')
 
 # Find which files contain strings in named directory and return appropriate values
-def getStrings(aFileList, aDirectory):
+def get_StringLists(aFileList, aDirectory):
 	hasStrings = []
 	noStrings = []
 	index = 0
-	chainMap = collections.ChainMap()
+	strings_chainMap = collections.ChainMap()
 
 	for x in aFileList:
 		tmpDirectory = aDirectory + "/" + x
@@ -79,25 +79,21 @@ def getStrings(aFileList, aDirectory):
 			"guessed_name" : "unknown",
 			"strings": stringsList,
 			"unique_file_strings" : [],
-			"unique_lib_strings" : [],
-			"no_of_fields" : 0,
-			"fields" : [],
-			"no_of_methods" : 0,
-			"methods" : []
+			"unique_lib_strings" : []
 			}
 	
 			#print(tmpDict["strings"][0])
-			chainMap = chainMap.new_child(tmpDict)
+			strings_chainMap = strings_chainMap.new_child(tmpDict)
 			#chain2 = strings_chainMap.new_child(tmpDict)
 
 
 		# Reset temp string
 		tmpDirectory = ""
 	
-	return hasStrings, noStrings, chainMap
+	return hasStrings, noStrings, strings_chainMap
 
 # Use precense of unique library strings to make preliminary guesses
-def getUniqueStrings(strings_chain):
+def unique_StringFinder(strings_chain):
 	tmpString = ""
 	total_unique_fStrings = []
 
@@ -136,7 +132,7 @@ def getUniqueStrings(strings_chain):
 
 
 # Try to find file matches based off of string matches
-def stringMatching(named_strings_chain, unnamed_strings_chain):
+def string_Matching(named_strings_chain, unnamed_strings_chain):
 	i = 0
 	guesses = []
 	still_unknown = collections.ChainMap()
@@ -184,7 +180,7 @@ def stringMatching(named_strings_chain, unnamed_strings_chain):
 
 # Given a list of still currently unknown files with unique library strings for each file,
 # try and determine based on the unique library string which file it likely is.
-def uniqueStringMatching(still_unknown, named_strings_chain, unnamed_strings_chain):
+def unique_StringMatching(still_unknown, named_strings_chain, unnamed_strings_chain):
 	still_unknown2 = []
 	for uFile in still_unknown.maps:
 		if uFile.get('Filename') != None:
@@ -220,7 +216,7 @@ def uniqueStringMatching(still_unknown, named_strings_chain, unnamed_strings_cha
 	return unnamed_strings_chain, still_unknown2
 
 # Get fields and methods attributes for files which do not contain strings		
-def getFieldsAndMethods(aFileList, aDirectory, packageName):
+def get_FieldsAndMethods(aFileList, aDirectory, packageName):
 	fields_methods_chainMap = collections.ChainMap()
 	fieldsList = []
 	methodsList = []
@@ -287,7 +283,7 @@ def getFieldsAndMethods(aFileList, aDirectory, packageName):
 
 # Take in dicts of information on fields and methods and do comparisons to try and make matches
 # (similar method to the string matching method)
-def fieldsAndMethodsMatching(named_fieldsAndMethods_chainMap, unnamed_fieldsAndMethods_chainMap):
+def fieldsAndMethods_Matching(named_fieldsAndMethods_chainMap, unnamed_fieldsAndMethods_chainMap):
 	still_unknown3 = collections.ChainMap()
 
 	for x in unnamed_fieldsAndMethods_chainMap.maps:
@@ -317,7 +313,7 @@ def fieldsAndMethodsMatching(named_fieldsAndMethods_chainMap, unnamed_fieldsAndM
 	return unnamed_fieldsAndMethods_chainMap, named_fieldsAndMethods_chainMap, still_unknown3
 
 # Try to make final guesses for files that we still aren't sure about
-def fieldsAndMethodsGuessing(still_unknown3, named_fieldsAndMethods_chain, unnamed_fieldsAndMethods_chain):
+def fieldsAndMethods_Guessing(still_unknown3, named_fieldsAndMethods_chain, unnamed_fieldsAndMethods_chain):
 	left_unknown = collections.ChainMap()
 	evaluate_fields = 0.0
 	evaluate_methods = 0.0
@@ -383,62 +379,50 @@ def main():
 	#aDirectory = ""
 	#parser = argparse.ArgumentParser(description='A program for renaming similar APKs')
 	
-	# Get a list of each libraries file names
-	named_file_list = getFileNames('library_named')
-	unnamed_file_list = getFileNames('library_unnamed')
+	namedFileList = get_fileNames('library_named')
+	unnamedFileList = get_fileNames('library_unnamed')
 	
-	# Create a chainmap (a dictionary of dictionaries) and fill in the 
-	# strings attribute of each dictionary for each file in the 
-	# named library of files
-	named_has_strings, named_no_strings, named_strings_chain = \
-	getStrings(named_file_list, 'library_named') # returns 2 lists and a chain map
-
-	# Do the same for the unnamed library of files
-	unnamed_has_strings, unnamed_no_strings, unnamed_strings_chain = \
-	getStrings(unnamed_file_list, 'library_unnamed') # returns 2 lists and a chain map
+	namedHasStrings, namedNoStrings, named_strings_chain = get_StringLists(namedFileList, 'library_named')
+	unnamedHasStrings, unnamedNoStrings, unnamed_strings_chain = get_StringLists(unnamedFileList, 'library_unnamed')
 	
-	# Fill out the 'unique_file_strings' and 'unique_lib_strings' portion of the dictionaries for each library
-	named_strings_chain = getUniqueStrings(named_strings_chain)
-	unnamed_strings_chain = getUniqueStrings(unnamed_strings_chain)
+	# Fill out the 'unique_file_strings' and 'unique_lib_strings' portion of the data structure
+	named_uniqueStringsChain = unique_StringFinder(named_strings_chain)
+	unnamed_uniqueStringsChain = unique_StringFinder(unnamed_strings_chain)
 	
 	print("Make guess for matches based on strings...")
 
 	# Make some matches and get back any that couldn't be matched yet
-	unnamed_strings_chain, still_unknown = \
-	stringMatching(named_strings_chain, unnamed_strings_chain)
+	unnamed_stringMatchesChain, still_unknown = string_Matching(named_uniqueStringsChain, unnamed_uniqueStringsChain)
 
-	getUpdate(unnamed_file_list, unnamed_strings_chain)
+	get_Update(unnamedFileList, unnamed_stringMatchesChain)
 
 	# Make final guesses for files with strings based on unique library strings
-	unnamed_strings_chain, still_unknown2 = \
-	uniqueStringMatching(still_unknown, named_strings_chain, unnamed_strings_chain)
+	final_String_Guesses, still_unknown2 = unique_StringMatching(still_unknown, named_uniqueStringsChain, unnamed_stringMatchesChain)
 
-	getUpdate(unnamed_file_list, unnamed_strings_chain)
+	get_Update(unnamedFileList, final_String_Guesses)
 
 	# Get Package name for filtering properly with methods and fields
 	# TO-DO method
 
 	# Get field information for NAMED files which DO NOT contain strings
-	#named_fieldsAndMethods_chainMap = getFieldsAndMethods(namedNoStrings, 'library_named', 'instantcoffee') # fileList, Directory, packageName
-
-	named_fieldsmethods_chain = getFieldsAndMethods(named_no_strings, 'library_named', 'instantcoffee') # fileList, Directory, packageName
+	named_fieldsAndMethods_chainMap = get_FieldsAndMethods(namedNoStrings, 'library_named', 'instantcoffee') # fileList, Directory, packageName
 
 	# Get field information for UNNAMED files which DO NOT contain strings in them and the still unknown files that do contain strings
-	#unnamedStringsAndMore = unnamedNoStrings + still_unknown2 
-	#unnamed_fieldsAndMethods_chainMap = getFieldsAndMethods(unnamedStringsAndMore, 'library_unnamed', 'instantcoffee') # fileList, Directory, packageName
+	unnamedStringsAndMore = unnamedNoStrings + still_unknown2 
+	unnamed_fieldsAndMethods_chainMap = get_FieldsAndMethods(unnamedStringsAndMore, 'library_unnamed', 'instantcoffee') # fileList, Directory, packageName
 
-	#print('Find matches based on fields and methods...')
+	print('Find matches based on fields and methods...')
 
 	# Make some exact matches with fields and methods and get back any that couldn't be matched
-	#unnamed_fieldsAndMethods_chain, named_fieldsAndMethods_chain, still_unknown3 = fieldsAndMethodsMatching(named_fieldsAndMethods_chainMap, unnamed_fieldsAndMethods_chainMap)
+	unnamed_fieldsAndMethods_chain, named_fieldsAndMethods_chain, still_unknown3 = fieldsAndMethods_Matching(named_fieldsAndMethods_chainMap, unnamed_fieldsAndMethods_chainMap)
 
-	#get_Update(unnamedFileList, unnamed_fieldsAndMethods_chain)
+	get_Update(unnamedFileList, unnamed_fieldsAndMethods_chain)
 
-	#print('Make guesses based off fields and methods percent matching...')
+	print('Make guesses based off fields and methods percent matching...')
 	# Try to make reasonable guesses from those that still couldn't be matched
-	#final_fieldsAndMethods_Guesses, left_unknown = fieldsAndMethodsGuessing(still_unknown3, named_fieldsAndMethods_chain, unnamed_fieldsAndMethods_chain)
+	final_fieldsAndMethods_Guesses, left_unknown = fieldsAndMethods_Guessing(still_unknown3, named_fieldsAndMethods_chain, unnamed_fieldsAndMethods_chain)
 	
-	#get_Update(unnamedFileList, final_fieldsAndMethods_Guesses)
+	get_Update(unnamedFileList, final_fieldsAndMethods_Guesses)
 
 	print('Done')
 
