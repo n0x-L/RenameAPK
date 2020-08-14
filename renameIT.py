@@ -181,13 +181,10 @@ def string_Matching(named_strings_chain, unnamed_strings_chain):
 # Given a list of still currently unknown files with unique library strings for each file,
 # try and determine based on the unique library string which file it likely is.
 def unique_StringMatching(still_unknown, named_strings_chain, unnamed_strings_chain):
+	still_unknown2 = []
 	for uFile in still_unknown.maps:
 		if uFile.get('Filename') != None:
 			uList = uFile.get('unique_lib_strings')
-
-			#if uFile.get('Filename') == 'cm.smali':
-			#	print('*******cm.smali unique strings: ')
-			#	print(uFile.get('unique_lib_strings'))
 
 			# Iterate over the named files to find a match
 			for nFile in named_strings_chain.maps:
@@ -209,8 +206,14 @@ def unique_StringMatching(still_unknown, named_strings_chain, unnamed_strings_ch
 								oFile.update(guessed_name = nFile.get('Filename'))
 							else:
 								continue
+
+			# If there are still no guesses for the file, put it
+			# in a collections to return and pass to the fields and 
+			# methods matching/guesses functions
+			if uFile.get('guessed_name') == 'unknown':
+				still_unknown2.append(uFile.get('Filename'))
 						
-	return unnamed_strings_chain
+	return unnamed_strings_chain, still_unknown2
 
 # Get fields and methods attributes for files which do not contain strings		
 def get_FieldsAndMethods(aFileList, aDirectory, packageName):
@@ -282,43 +285,48 @@ def get_FieldsAndMethods(aFileList, aDirectory, packageName):
 # (similar method to the string matching method)
 def fieldsAndMethods_Matching(named_fieldsAndMethods_chainMap, unnamed_fieldsAndMethods_chainMap):
 	guesses = []
-	still_unknown2 = collections.ChainMap()
+	still_unknown3 = collections.ChainMap()
 
 	for x in unnamed_fieldsAndMethods_chainMap.maps:
 		if x.get('Filename') != None:
 			# If they have the same number of fields AND methods then store it in the 'guesses' list
 			for y in named_fieldsAndMethods_chainMap.maps:
 				if x.get('no_of_fields') == y.get('no_of_fields') and x.get('no_of_methods') == y.get('no_of_methods'):
-					guesses.append(y)
+					#guesses.append(y)
 
 			# Loop through our list of guesses and try to 
 			# match up the fields and methods
-			for z in guesses:
-				tmpFieldsX = x.get('fields')
-				tmpMethodsX = x.get('methods')
-				tmpFieldsZ = z.get('fields')
-				tmpMethodsZ = z.get('methods')
+			#for z in guesses:
+					tmpFieldsX = x.get('fields')
+					tmpMethodsX = x.get('methods')
+					tmpFieldsY = y.get('fields')
+					tmpMethodsY = y.get('methods')
 
 				# If fields array and methods array of x is the same as fields and methods array of guess z
 				# then record it as the guess
-				if set(tmpFieldsX) == set(tmpFieldsZ) and set(tmpMethodsX) == set(tmpMethodsZ):
-					x.update(guessed_name = z.get('Filename'))
-					break # stop searching if match is found
+					if set(tmpFieldsX) == set(tmpFieldsY) and set(tmpMethodsX) == set(tmpMethodsY):
+						x.update(guessed_name = y.get('Filename'))
 
+						break # stop searching if match is found
+				
 			# Reset list
-			guesses = []
+			#guesses = []
 
 			# At this point we will have checked the x file against all the 
 			# y files, so if we found no matches for it, store
 			# it in the uknown list and move on to the next x file
 			if x.get('guessed_name') == 'unknown':
-				still_unknown2 = still_unknown2.new_child(x)
+				still_unknown3 = still_unknown3.new_child(x)
 
-	return unnamed_fieldsAndMethods_chainMap, still_unknown2
+	return unnamed_fieldsAndMethods_chainMap, still_unknown3
 
-def fieldsAndMethods_Guessing(still_unknown2, named_fieldsAndMethods_chain, unnamed_fieldsAndMethods_chain):
+# Try to make final guesses for files that we still aren't sure about
+def fieldsAndMethods_Guessing(still_unknown3, named_fieldsAndMethods_chain, unnamed_fieldsAndMethods_chain):
 	left_unknown = collections.ChainMap()
-	for u2File in still_unknown2.maps:
+	evaluate_fields = 0.0
+	evaluate_methods = 0.0
+
+	for u2File in still_unknown3.maps:
 		if u2File.get('Filename') != None:
 
 			# Get the files fields and methods list
@@ -333,10 +341,12 @@ def fieldsAndMethods_Guessing(still_unknown2, named_fieldsAndMethods_chain, unna
 					n_methodsList = nFile.get('methods')
 
 					# Generate a percentage value of how similar the two field lists are
-					evaluate_fields = len(set(u2_fieldsList) & set(n_fieldsList)) / float(len(set(u2_fieldsList) | set(n_fieldsList))) * 100
+					if float(len(set(u2_fieldsList) | set(n_fieldsList))) != 0:
+						evaluate_fields = len(set(u2_fieldsList) & set(n_fieldsList)) / float(len(set(u2_fieldsList) | set(n_fieldsList))) * 100
 
 					# Generate a percentage value of how similar the two methods lists are
-					evaluate_methods = len(set(u2_methodsList) & set(n_methodsList)) / float(len(set(u2_methodsList) | set(n_methodsList))) * 100
+					if float(len(set(u2_methodsList) | set(n_methodsList))) != 0:
+						evaluate_methods = len(set(u2_methodsList) & set(n_methodsList)) / float(len(set(u2_methodsList) | set(n_methodsList))) * 100
 
 					#if evaluate_fields > 0.0:
 					#	print('Percentage simliarity of fields in file ' + u2File.get('Filename') + ' and ' + nFile.get('Filename') + ': ' + str(evaluate_fields))
@@ -349,16 +359,22 @@ def fieldsAndMethods_Guessing(still_unknown2, named_fieldsAndMethods_chain, unna
 					# for the methods and fields lists
 					for oFile in unnamed_fieldsAndMethods_chain.maps:
 						if oFile.get('Filename') == u2File.get('Filename'): # find where in the unnamed list is the unknown file we're evaluating
-							if evaluate_methods > 49.0 or evaluate_fields > 49.0:
-								oFile.update(guessed_name = nFile.get('Filename'))
-							else:
+							if evaluate_methods > 49.0 and evaluate_fields > 49.0:
+								# Don't overwrite guesses we already made
+								if oFile.get('guessed_name') == 'unknown':
+									#print('making a guess')
+									oFile.update(guessed_name = nFile.get('Filename'))
+									break # stop looking, since we were just searching for the matching file to either update the guessed_name value or not
+								#else:
+									#print('already made a guess for ' + oFile.get('Filename'))
+						else:
 								#if evaluate_fields > 0.0 or evaluate_methods > 0.0:
 								#	print('Not sure who ' + u2File.get('Filename') + ' is.')
 								#	print('Percentage simliarity of fields in file ' + u2File.get('Filename') + ' and ' + nFile.get('Filename') + ': ' + str(evaluate_fields))
 								#	print('Percentage simliarity of methods in file ' + u2File.get('Filename') + ' and ' + nFile.get('Filename') + ': ' + str(evaluate_methods))
+							continue # keep searching for the matching file
 
-								left_unknown = left_unknown.new_child(u2File)
-								continue
+					#left_unknown = left_unknown.new_child(File)
 						
 	return unnamed_fieldsAndMethods_chain, left_unknown
 
@@ -385,35 +401,36 @@ def main():
 	get_Update(unnamedFileList, unnamed_stringMatchesChain)
 
 	# Make final guesses for files with strings based on unique library strings
-	final_String_Guesses = unique_StringMatching(still_unknown, named_uniqueStringsChain, unnamed_stringMatchesChain)
+	final_String_Guesses, still_unknown2 = unique_StringMatching(still_unknown, named_uniqueStringsChain, unnamed_stringMatchesChain)
 
 	get_Update(unnamedFileList, final_String_Guesses)
 
 	# Get Package name for filtering properly with methods and fields
 	# TO-DO method
 
-	# Get field information for NAMED files which do not contain strings
+	# Get field information for NAMED files which DO NOT contain strings
 	named_fieldsAndMethods_chainMap = get_FieldsAndMethods(namedNoStrings, 'library_named', 'instantcoffee') # fileList, Directory, packageName
 
-	# Get field information for UNNAMED files which do not contain strings in them
-	unnamed_fieldsAndMethods_chainMap = get_FieldsAndMethods(unnamedNoStrings, 'library_unnamed', 'instantcoffee') # fileList, Directory, packageName
+	# Get field information for UNNAMED files which DO NOT contain strings in them and the still unknown files that do contain strings
+	unnamedStringsAndMore = unnamedNoStrings + still_unknown2 
+	unnamed_fieldsAndMethods_chainMap = get_FieldsAndMethods(unnamedStringsAndMore, 'library_unnamed', 'instantcoffee') # fileList, Directory, packageName
 
-	print('Make guess for matches based on fields and methods..')
+	print('Find matches based on fields and methods...')
 
 	# Make some exact matches with fields and methods and get back any that couldn't be matched
-	unnamed_fieldsAndMethods_chain, still_unknown2 = fieldsAndMethods_Matching(named_fieldsAndMethods_chainMap, unnamed_fieldsAndMethods_chainMap)
+	unnamed_fieldsAndMethods_chain, still_unknown3 = fieldsAndMethods_Matching(named_fieldsAndMethods_chainMap, unnamed_fieldsAndMethods_chainMap)
 
 	get_Update(unnamedFileList, unnamed_fieldsAndMethods_chain)
 
+	print('Make guesses based off fields and methods percent matching...')
 	# Try to make reasonable guesses from those that still couldn't be matched
-	#final_fieldsAndMethods_Guesses, left_unknown = fieldsAndMethods_Guessing(still_unknown2, named_fieldsAndMethods_chainMap, unnamed_fieldsAndMethods_chain)
+	final_fieldsAndMethods_Guesses, left_unknown = fieldsAndMethods_Guessing(still_unknown3, named_fieldsAndMethods_chainMap, unnamed_fieldsAndMethods_chain)
+	
+	get_Update(unnamedFileList, final_fieldsAndMethods_Guesses)
 
-	#print('Try to make some more...')
-	#get_Update(unnamedFileList, final_fieldsAndMethods_Guesses)
+	print('Done')
 
-	#print('Done')
-
-	#pprint.pprint(final_fieldsAndMethods_Guesses)
+	#pprint.pprint(left_unknown)
 
 	#for x in final_fieldsAndMethods_Guesses.maps:
 	#	if x.get('Filename') != None:
