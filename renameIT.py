@@ -106,9 +106,7 @@ def getStrings(file_list, directory):
 # Find which files have strings
 # unique to the entire library
 ###########################
-
-# TO-DO Make this method function better 
-# now that we are passing through a single chain map (file_chain)
+# TO-DO Fix now that we are passing through a single chain map (file_chain)
 def getUniqueStrings(file_chain):
 	unique_file_strings = []
 
@@ -137,6 +135,8 @@ def getUniqueStrings(file_chain):
 # Try to find file matches 
 # based off of string matches
 ###########################
+# TO-DO Fix the guessing part for when they don't
+# share the exact same strings
 def stringMatching(named_chain, unnamed_chain):
 	still_unknown_chain = collections.ChainMap()
 
@@ -289,8 +289,12 @@ def getFieldsAndMethods(file_chain, directory, package_name):
 	
 		return file_chain
 
-# Take in dicts of information on fields and methods and do comparisons to try and make matches
-# (similar method to the string matching method)
+###########################	
+# Take in chain maps and 
+# try to make matches based off
+# field and method similarities
+###########################	
+# TO-DO Refactoring names and process
 def fieldsAndMethodsMatching(named_fieldsAndMethods_chainMap, unnamed_fieldsAndMethods_chainMap):
 	still_unknown3 = collections.ChainMap()
 
@@ -320,7 +324,11 @@ def fieldsAndMethodsMatching(named_fieldsAndMethods_chainMap, unnamed_fieldsAndM
 
 	return unnamed_fieldsAndMethods_chainMap, named_fieldsAndMethods_chainMap, still_unknown3
 
-# Try to make final guesses for files that we still aren't sure about
+###########################	
+# Try to make final guesses 
+# for files that we still aren't sure about
+###########################	
+# TO-DO Refactoring names and process
 def fieldsAndMethodsGuessing(still_unknown3, named_fieldsAndMethods_chain, unnamed_fieldsAndMethods_chain):
 	left_unknown = collections.ChainMap()
 	evaluate_fields = 0.0
