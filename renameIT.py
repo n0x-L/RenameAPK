@@ -212,18 +212,10 @@ def unique_StringMatching(still_unknown, named_strings_chain, unnamed_strings_ch
 						
 	return unnamed_strings_chain
 
-# Get fields and methods attributes for files which do not contain strings
-# !! Currently doesn't do anything with the noMethods and hasMethods lists			
+# Get fields and methods attributes for files which do not contain strings		
 def get_FieldsAndMethods(aFileList, aDirectory, packageName):
 	fields_methods_chainMap = collections.ChainMap()
-	noFields = []
-	hasFields = []
-	noFieldsCount = 0
-	hasFieldsCount = 0
 	fieldsList = []
-
-	noMethods = []
-	hasMethods = []
 	methodsList = []
 
 	# TO-DO insert packageName
@@ -238,17 +230,6 @@ def get_FieldsAndMethods(aFileList, aDirectory, packageName):
 		fields = fields.decode('utf-8')
 
 		if fields:
-			if 'cn' in x:
-				print(x + ' grep field results:')
-				print(fields)
-				exit()
-		#	noFields.append(x)
-		#	noFieldsCount+=1
-		#else:
-			#fieldsList = []
-			#hasFields.append(x)
-			#hasFieldsCount+=1
-
 			# Filter out field names (for package fields they will be differently named)
 			tmpFieldsList = re.findall('((\\b)([a-zA-Z0-9_]+):(.)*$)', fields, flags=re.M)
 
@@ -260,26 +241,18 @@ def get_FieldsAndMethods(aFileList, aDirectory, packageName):
 				else:
 					fieldsList.append(y[0])
 
-			
-
 		# Do a grep of the methods in the file
 		c = subprocess.Popen('grep -a ".method " %s' % tmpDirectory, stdout=subprocess.PIPE, shell=True)
 		methods, errorMTemp = c.communicate()
 		methods = methods.decode('utf-8')
 	
-		# If no methods in file just add the filename to the noMethods list
-		#if not methods:
-			#print("No methods in file: ", x)
-		#	noMethods.append(x)
 
-		# Otherwise build a list of methods using a regex to extract them out of the grep we did	
-		#else:
+		# If methods in file, build a list of methods using a regex to extract them from the grep
 		if methods:
-			#methodsList = []
 			tmpMethodsList = re.findall('((\\b)([a-zA-Z0-9_]+)\((.)*$|constructor.*$)', methods, flags=re.M)
 			
 			# A bit trickier, use regex to replace "Linstantcoffee/x" occurences with just "instantcoffee"
-			# while maintaining everything else so that we don't lose the general signature
+			# while maintaining everything else so that we don't lose the form of the method signature
 			for y in tmpMethodsList:
 				if packageName in y[0]:
 					methodsList.append(methods_re.sub(packageName, y[0]))
@@ -298,17 +271,13 @@ def get_FieldsAndMethods(aFileList, aDirectory, packageName):
 
 		fields_methods_chainMap = fields_methods_chainMap.new_child(tmpDict)
 
-		# Reset
+		# Reset values
 		tmpDirectory = ""
 		fieldsList = []
 		methodsList = []
 	
 	return fields_methods_chainMap
 
-#################################
-# THIS METHOD NEEDS TO BE FIXED #
-# see git log for details       #
-################################
 # Take in dicts of information on fields and methods and do comparisons to try and make matches
 # (similar method to the string matching method)
 def fieldsAndMethods_Matching(named_fieldsAndMethods_chainMap, unnamed_fieldsAndMethods_chainMap):
@@ -319,25 +288,20 @@ def fieldsAndMethods_Matching(named_fieldsAndMethods_chainMap, unnamed_fieldsAnd
 		if x.get('Filename') != None:
 			# If they have the same number of fields AND methods then store it in the 'guesses' list
 			for y in named_fieldsAndMethods_chainMap.maps:
-				if x.get('no_of_fields') == y.get('no_of_fields') or x.get('no_of_methods') == y.get('no_of_methods'):
+				if x.get('no_of_fields') == y.get('no_of_fields') and x.get('no_of_methods') == y.get('no_of_methods'):
 					guesses.append(y)
 
 			# Loop through our list of guesses and try to 
 			# match up the fields and methods
 			for z in guesses:
 				tmpFieldsX = x.get('fields')
-				tmpFieldsZ = z.get('fields')
 				tmpMethodsX = x.get('methods')
+				tmpFieldsZ = z.get('fields')
 				tmpMethodsZ = z.get('methods')
 
 				# If fields array and methods array of x is the same as fields and methods array of guess z
 				# then record it as the guess
-				if set(tmpFieldsX) == set(tmpFieldsZ) or set(tmpMethodsX) == set(tmpMethodsZ):
-					print('Guess is that ' + x.get('Filename') + " is " + z.get('Filename'))
-					print(x.get('Filename') + ' has fields:')
-					print(tmpFieldsX)
-					print('and ' + x.get('Filename') + ' has fields:')
-					print(tmpFieldsZ)
+				if set(tmpFieldsX) == set(tmpFieldsZ) and set(tmpMethodsX) == set(tmpMethodsZ):
 					x.update(guessed_name = z.get('Filename'))
 					break # stop searching if match is found
 
@@ -430,11 +394,9 @@ def main():
 
 	# Get field information for NAMED files which do not contain strings
 	named_fieldsAndMethods_chainMap = get_FieldsAndMethods(namedNoStrings, 'library_named', 'instantcoffee') # fileList, Directory, packageName
-	#named_fieldsAndMethods_chainMap = get_FieldsAndMethods(namedFileList, 'library_named', 'instantcoffee') # fileList, Directory, packageName
 
 	# Get field information for UNNAMED files which do not contain strings in them
 	unnamed_fieldsAndMethods_chainMap = get_FieldsAndMethods(unnamedNoStrings, 'library_unnamed', 'instantcoffee') # fileList, Directory, packageName
-	#unnamed_fieldsAndMethods_chainMap = get_FieldsAndMethods(unnamedFileList, 'library_unnamed', 'instantcoffee') # fileList, Directory, packageName
 
 	print('Make guess for matches based on fields and methods..')
 
@@ -444,12 +406,12 @@ def main():
 	get_Update(unnamedFileList, unnamed_fieldsAndMethods_chain)
 
 	# Try to make reasonable guesses from those that still couldn't be matched
-	final_fieldsAndMethods_Guesses, left_unknown = fieldsAndMethods_Guessing(still_unknown2, named_fieldsAndMethods_chainMap, unnamed_fieldsAndMethods_chain)
+	#final_fieldsAndMethods_Guesses, left_unknown = fieldsAndMethods_Guessing(still_unknown2, named_fieldsAndMethods_chainMap, unnamed_fieldsAndMethods_chain)
 
-	print('Try to make some more...')
-	get_Update(unnamedFileList, final_fieldsAndMethods_Guesses)
+	#print('Try to make some more...')
+	#get_Update(unnamedFileList, final_fieldsAndMethods_Guesses)
 
-	print('Done')
+	#print('Done')
 
 	#pprint.pprint(final_fieldsAndMethods_Guesses)
 
